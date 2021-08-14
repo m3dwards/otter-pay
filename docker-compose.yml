@@ -1,0 +1,59 @@
+version: "3.8"
+services:
+  bitcoind1:
+    image: nicolasdorier/docker-bitcoin:0.21.1
+    container_name: bitcoind1
+    environment:
+      BITCOIN_NETWORK: regtest
+      BITCOIN_EXTRA_ARGS: |
+        whitelist=0.0.0.0/0
+        server=1
+        rpcuser=rpcuser
+        rpcpassword=rpcpass
+        rpcallowip=0.0.0.0/0
+    expose:
+      - "18332"
+    healthcheck:
+      test: ["CMD", "/entrypoint.sh", "bitcoin-cli", '-rpcport="8332', "-getinfo"]
+    ports:
+      - "0.0.0.0:18333:18333"
+    volumes:
+      - "bitcoin_datadir:/data"
+    # networks:
+    #   - LN_testing
+
+  clightning_bitcoin1:
+    image: elementsproject/lightningd
+    container_name: lightningd1
+    command:
+      - --bitcoin-rpcconnect=bitcoind1
+      - --bitcoin-rpcuser=rpcuser
+      - --bitcoin-rpcpassword=rpcpass
+      - --bitcoin-rpcport=8332
+      - --network=regtest
+      - --plugin-dir=/usr/libexec/c-lightning/plugins
+      - --alias=lightningnode
+      - --log-level=debug
+    environment:
+      EXPOSE_TCP: "true"
+    expose:
+      - "9735"
+    ports:
+      - "0.0.0.0:9735:9735"
+    volumes:
+      - "clightning_bitcoin_datadir:/root/.lightning"
+      - "bitcoin_datadir:/root/.bitcoin"
+    links:
+      - bitcoind1
+    # entrypoint: ["tail", "-f",  "/dev/null"]
+    # networks:
+    #   - LN_testing
+
+volumes:
+  bitcoin_datadir:
+  clightning_bitcoin_datadir:
+
+# networks:
+#   LN_testing:
+#     external:
+#       name: LN_testing
